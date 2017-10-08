@@ -6058,6 +6058,10 @@ int fill_schema_proc(THD *thd, TABLE_LIST *tables, COND *cond)
     get_schema_table_idx(tables->schema_table);
   DBUG_ENTER("fill_schema_proc");
 
+  /* Disable padding temporarily so it doesn't break the query */
+  Sql_mode_save restore_sql_mode(thd);
+  thd->variables.sql_mode &= ~MODE_PAD_CHAR_TO_FULL_LENGTH;
+
   strxmov(definer, thd->security_ctx->priv_user, "@",
           thd->security_ctx->priv_host, NullS);
   /* We use this TABLE_LIST instance only for checking of privileges. */
