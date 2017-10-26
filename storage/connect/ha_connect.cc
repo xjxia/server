@@ -5830,12 +5830,12 @@ static int connect_assisted_discovery(handlerton *, THD* thd,
 				case TAB_JSON:
 					qrp = JSONColumns(g, db, dsn, topt, fnc == FNC_COL);
 					break;
-#if defined(JAVA_SUPPORT)
+#if defined(MONGO_SUPPORT)
 				case TAB_MONGO:
 					url = strz(g, create_info->connect_string);
 					qrp = MGOColumns(g, db, url, topt, fnc == FNC_COL);
 					break;
-#endif   // JAVA_SUPPORT
+#endif   // MONGO_SUPPORT
 #if defined(LIBXML2_SUPPORT) || defined(DOMDOC_SUPPORT)
 				case TAB_XML:
 					qrp = XMLColumns(g, (char*)db, tab, topt, fnc == FNC_COL);
