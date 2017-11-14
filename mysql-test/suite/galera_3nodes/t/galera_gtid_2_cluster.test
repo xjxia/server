@@ -71,15 +71,15 @@ select * from t1;
 --connection node_2
 insert into t1 values (1,2);
 select @@gtid_binlog_state;
-#--connection node_3
-#select @@gtid_binlog_state;
-#insert into t1 values (1,3);
-#--connection node_5
-#select @@gtid_binlog_state;
-#insert into t1 values (2,2);
-#--connection node_6
-#select @@gtid_binlog_state;
-#insert into t1 values (2,3);
+--connection node_3
+select @@gtid_binlog_state;
+insert into t1 values (1,3);
+--connection node_5
+select @@gtid_binlog_state;
+insert into t1 values (2,2);
+--connection node_6
+select @@gtid_binlog_state;
+insert into t1 values (2,3);
 
 --connection node_1
 drop table t1;

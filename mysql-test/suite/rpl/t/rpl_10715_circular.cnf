@@ -1,0 +1,13 @@
+!include ../my.cnf
+
+[mysqld.1]
+gtid_domain_id=1
+log-bin
+binlog-format=row
+log-slave-updates
+
+[mysqld.2]
+gtid_domain_id=2
+log-bin
+binlog-format=row
+log-slave-updates

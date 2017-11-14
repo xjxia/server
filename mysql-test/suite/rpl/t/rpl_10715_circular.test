@@ -1,0 +1,57 @@
+--source include/have_innodb.inc
+
+--let $rpl_topology=1->2,2->1
+--source include/rpl_init.inc
+
+--connection server_1
+stop slave;
+change master to master_use_gtid=current_pos;
+start slave;
+--sleep 1
+--connection server_2
+stop slave;
+change master to master_use_gtid=current_pos;
+start slave;
+
+--echo #server 1
+--sleep 1
+--connection server_1
+create table t1(a int , b int, c int);
+insert into t1 values(1,1,1);
+select @@gtid_binlog_state;
+
+--echo #server 2
+--sleep 1
+--connection server_2
+insert into t1 values(2,2,1);
+select @@gtid_binlog_state;
+
+--echo #server 1
+--sleep 1
+--connection server_1
+insert into t1 values(1,1,2);
+select @@gtid_binlog_state;
+#a random server id
+set @@session.server_id=99;
+insert into t1 values(1,99,4);
+
+--echo #server 2
+--sleep 1
+--connection server_2
+insert into t1 values(2,2,2);
+select @@gtid_binlog_state;
+
+--echo #server 1
+--connection server_1
+select * from t1;
+select @@gtid_binlog_state;
+--echo #server 2
+--connection server_2
+select * from t1;
+select @@gtid_binlog_state;
+--sleep 1
+#cleanup
+--connection server_1
+drop table t1;
+
+--source include/rpl_end.inc

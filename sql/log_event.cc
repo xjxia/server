@@ -6786,6 +6786,7 @@ Gtid_log_event::do_apply_event(rpl_group_info *rgi)
     bits|= (ulonglong)OPTION_RPL_SKIP_PARALLEL;
   thd->variables.option_bits= bits;
   DBUG_PRINT("info", ("Set OPTION_GTID_BEGIN"));
+  DBUG_PRINT("info", ("Setiya GTID = %d-%d-%u", this->domain_id, this->server_id, this->seq_no));
   thd->set_query_and_id(gtid_begin_string, sizeof(gtid_begin_string)-1,
                         &my_charset_bin, next_query_id());
   thd->lex->sql_command= SQLCOM_BEGIN;
