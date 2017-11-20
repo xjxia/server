@@ -358,10 +358,18 @@ rpl_slave_state::get_element(uint32 domain_id)
       if (gtid_list[i].domain_id == domain_id &&
              highest_seq_no < gtid_list[i].seq_no)
         highest_seq_no= gtid_list[i].seq_no;
+    my_free(gtid_list);
   }
   if (elem)
+  {
     if (highest_seq_no <= elem->highest_seq_no)
       return elem;
+    else
+    {
+      elem->highest_seq_no= highest_seq_no;
+      return elem;
+    }
+  }
   if (!(elem= (element *)my_malloc(sizeof(*elem), MYF(MY_WME))))
     return NULL;
   elem->list= NULL;
