@@ -124,7 +124,7 @@ rpl_slave_state::check_duplicate_gtid(rpl_gtid *gtid, rpl_group_info *rgi)
   PSI_stage_info old_stage;
   THD *UNINIT_VAR(thd);
   Relay_log_info *rli= rgi->rli;
-
+  int a = rpl_global_gtid_binlog_state.find_most_recent(1);
   mysql_mutex_lock(&LOCK_slave_state);
   if (!(elem= get_element(domain_id)))
   {
