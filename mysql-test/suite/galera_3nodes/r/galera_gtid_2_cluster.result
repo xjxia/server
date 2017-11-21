@@ -70,6 +70,8 @@ insert into t1 values (2,3);
 drop table t1;
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-13-4,1-12-3,1-11-5,2-21-1
+1-13-4,1-12-3,1-11-5,2-21-1,2-23-3
+stop slave;
+change master to master_use_gtid=no;
 stop slave;
 change master to master_use_gtid=no;

@@ -1,55 +1,58 @@
 include/rpl_init.inc [topology=1->2,2->1]
 stop slave;
+include/wait_for_slave_to_stop.inc
 change master to master_use_gtid=current_pos;
 start slave;
+include/wait_for_slave_to_start.inc
 stop slave;
+include/wait_for_slave_to_stop.inc
 change master to master_use_gtid=current_pos;
 start slave;
+include/wait_for_slave_to_start.inc
 #server 1
 create table t1(a int , b int, c int);
-insert into t1 values(1,1,1);
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-1-2
+1-1-1
+include/save_master_gtid.inc
 #server 2
+include/sync_with_master_gtid.inc
 insert into t1 values(2,2,1);
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-1-2,2-2-1
+1-1-1,2-2-1
+include/save_master_gtid.inc
 #server 1
+include/sync_with_master_gtid.inc
 insert into t1 values(1,1,2);
-select @@gtid_binlog_state;
-@@gtid_binlog_state
-1-1-3,2-2-1
 set @@session.server_id=99;
-insert into t1 values(1,99,4);
+insert into t1 values(1,99,3);
+include/save_master_gtid.inc
 #server 2
-insert into t1 values(2,2,2);
+include/sync_with_master_gtid.inc
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-1-3,1-99-4,2-2-2
+1-1-2,1-99-3,2-2-1
 #server 1
-select * from t1;
+select * from t1 order by a;
 a	b	c
-1	1	1
-2	2	1
 1	1	2
-1	99	4
-1	99	4
-2	2	2
+1	99	3
+2	2	1
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-1-3,1-99-4,2-2-2
+1-1-2,1-99-3,2-2-1
 #server 2
-select * from t1;
+select * from t1 order by a;
 a	b	c
-1	1	1
-2	2	1
 1	1	2
-1	99	4
-2	2	2
+1	99	3
+2	2	1
 select @@gtid_binlog_state;
 @@gtid_binlog_state
-1-1-3,1-99-4,2-2-2
+1-1-2,1-99-3,2-2-1
+set @@session.server_id=1;
 drop table t1;
+include/save_master_gtid.inc
+include/sync_with_master_gtid.inc
 include/rpl_end.inc

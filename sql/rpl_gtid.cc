@@ -119,6 +119,7 @@ rpl_slave_state::check_duplicate_gtid(rpl_gtid *gtid, rpl_group_info *rgi)
   uint64 seq_no= gtid->seq_no;
   rpl_slave_state::element *elem;
   int res;
+  uint64 highest_seq_no;
   bool did_enter_cond= false;
   PSI_stage_info old_stage;
   THD *UNINIT_VAR(thd);
@@ -130,6 +131,21 @@ rpl_slave_state::check_duplicate_gtid(rpl_gtid *gtid, rpl_group_info *rgi)
     res= -1;
     goto err;
   }
+  highest_seq_no= elem->highest_seq_no;
+  if (opt_bin_log)
+  {
+    uint size= 0;
+    rpl_gtid *gtid_list= NULL;
+    if (!mysql_bin_log.get_most_recent_gtid_list(&gtid_list,
+                &size))
+    {
+      for (uint i= 0; i < size; i++)
+        if (gtid_list[i].domain_id == domain_id &&
+              highest_seq_no < gtid_list[i].seq_no)
+          highest_seq_no= gtid_list[i].seq_no;
+      my_free(gtid_list);
+    }
+  }
   /*
     Note that the elem pointer does not change once inserted in the hash. So
     we can re-use the pointer without looking it up again in the hash after
@@ -138,7 +154,7 @@ rpl_slave_state::check_duplicate_gtid(rpl_gtid *gtid, rpl_group_info *rgi)
 
   for (;;)
   {
-    if (elem->highest_seq_no >= seq_no)
+    if (highest_seq_no >= seq_no)
     {
       /* This sequence number is already applied, ignore it. */
       res= 0;
@@ -348,8 +364,7 @@ rpl_slave_state::get_element(uint32 domain_id)
   struct element *elem;
 
   elem= (element *)my_hash_search(&hash, (const uchar *)&domain_id, 0);
-  uint highest_seq_no= 0;
-  if (opt_bin_log)
+  /*  if (opt_bin_log)
   {
     uint size= 0;
     rpl_gtid *gtid_list= NULL;
@@ -359,22 +374,19 @@ rpl_slave_state::get_element(uint32 domain_id)
              highest_seq_no < gtid_list[i].seq_no)
         highest_seq_no= gtid_list[i].seq_no;
     my_free(gtid_list);
-  }
+  }*/
   if (elem)
-  {
-    if (highest_seq_no <= elem->highest_seq_no)
+   /*   if (highest_seq_no <= elem->highest_seq_no)
       return elem;
     else
     {
-      elem->highest_seq_no= highest_seq_no;
+      elem->highest_seq_no= highest_seq_no;*/
       return elem;
-    }
-  }
   if (!(elem= (element *)my_malloc(sizeof(*elem), MYF(MY_WME))))
     return NULL;
   elem->list= NULL;
   elem->domain_id= domain_id;
-  elem->highest_seq_no= highest_seq_no;
+  elem->highest_seq_no= 0;
   elem->gtid_waiter= NULL;
   elem->owner_rli= NULL;
   elem->owner_count= 0;

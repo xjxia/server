@@ -5,53 +5,64 @@
 
 --connection server_1
 stop slave;
+--source include/wait_for_slave_to_stop.inc
 change master to master_use_gtid=current_pos;
 start slave;
+--source include/wait_for_slave_to_start.inc
+
 --sleep 1
 --connection server_2
 stop slave;
+--source include/wait_for_slave_to_stop.inc
 change master to master_use_gtid=current_pos;
 start slave;
+--source include/wait_for_slave_to_start.inc
+
 
 --echo #server 1
---sleep 1
 --connection server_1
 create table t1(a int , b int, c int);
-insert into t1 values(1,1,1);
 select @@gtid_binlog_state;
+--source include/save_master_gtid.inc
 
 --echo #server 2
---sleep 1
 --connection server_2
+--source include/sync_with_master_gtid.inc
 insert into t1 values(2,2,1);
 select @@gtid_binlog_state;
+--source include/save_master_gtid.inc
 
 --echo #server 1
---sleep 1
 --connection server_1
+--source include/sync_with_master_gtid.inc
 insert into t1 values(1,1,2);
-select @@gtid_binlog_state;
 #a random server id
 set @@session.server_id=99;
-insert into t1 values(1,99,4);
+insert into t1 values(1,99,3);
+--source include/save_master_gtid.inc
 
 --echo #server 2
---sleep 1
 --connection server_2
-insert into t1 values(2,2,2);
+--source include/sync_with_master_gtid.inc
 select @@gtid_binlog_state;
 
 --echo #server 1
 --connection server_1
-select * from t1;
+select * from t1 order by a;
 select @@gtid_binlog_state;
+
 --echo #server 2
 --connection server_2
-select * from t1;
+select * from t1 order by a;
 select @@gtid_binlog_state;
---sleep 1
+
 #cleanup
 --connection server_1
+set @@session.server_id=1;
 drop table t1;
+--source include/save_master_gtid.inc
+
+--connection server_2
+--source include/sync_with_master_gtid.inc
 
 --source include/rpl_end.inc
