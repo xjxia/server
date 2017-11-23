@@ -1905,7 +1905,7 @@ bool my_yyoverflow(short **a, YYSTYPE **b, ulong *yystacksize);
         opt_field_or_var_spec fields_or_vars opt_load_data_set_spec
         view_list_opt view_list view_select
         trigger_tail sp_tail sf_tail event_tail
-        udf_tail create_function_tail create_function_tail2
+        udf_tail create_function_tail create_agg_function_tail
         install uninstall partition_entry binlog_base64_event
         normal_key_options normal_key_opts all_key_opt 
         spatial_key_options fulltext_key_options normal_key_opt 
@@ -2653,7 +2653,7 @@ create:
           {
             Lex->create_info.set($1);
           }
-          create_function_tail2
+          create_agg_function_tail
           { }
         | create_or_replace USER_SYM opt_if_not_exists clear_privileges grant_list
           opt_require_clause opt_resource_options
@@ -2691,7 +2691,7 @@ create_function_tail:
         | udf_tail { Lex->udf.type= UDFTYPE_FUNCTION; }
         ;
 
-create_function_tail2:
+create_agg_function_tail:
           sf_tail 
          {
             if (Lex->sp_chistics.agg_type != GROUP_AGGREGATE)
