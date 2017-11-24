@@ -10595,9 +10595,23 @@ sum_expr:
           {
             SELECT_LEX *sel= Select;
             sel->in_sum_expr--;
-            $$= new (thd->mem_root)
-                  Item_func_group_concat(thd, Lex->current_context(), $3, $5,
-                                         sel->gorder_list, $7);
+            if (!$8)
+              $$= new (thd->mem_root)
+                      Item_func_group_concat(thd, Lex->current_context(), $3, $5,
+                                           sel->gorder_list, $7, FALSE, NULL, 0);
+            else
+            {
+              if (sel->select_limit && sel->offset_limit)
+                $$= new (thd->mem_root)
+                        Item_func_group_concat(thd, Lex->current_context(), $3, $5,
+                                               sel->gorder_list, $7, TRUE,
+                                               sel->select_limit, sel->offset_limit);
+              else if (sel->select_limit)
+                 $$= new (thd->mem_root)
+                         Item_func_group_concat(thd, Lex->current_context(), $3, $5,
+                                                sel->gorder_list, $7, TRUE,
+                                                sel->select_limit, 0);
+            }
             if ($$ == NULL)
               MYSQL_YYABORT;
             sel->select_limit= NULL;
