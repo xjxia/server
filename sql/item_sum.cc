@@ -3114,6 +3114,11 @@ int dump_leaf_key(void* key_arg, element_count count __attribute__((unused)),
   Item **arg= item->args, **arg_end= item->args + item->arg_count_field;
   uint old_length= result->length();
 
+  ulonglong *offset_limit= &item->copy_offset_limit;
+  ulonglong *row_limit = &item->copy_row_limit;
+  if (item->limit_clause && !(*row_limit))
+    return 1;
+
   if (item->no_appended)
     item->no_appended= FALSE;
   else
@@ -3121,6 +3126,14 @@ int dump_leaf_key(void* key_arg, element_count count __attribute__((unused)),
 
   tmp.length(0);
 
+  if (item->limit_clause && (*offset_limit))
+  {
+    item->row_count++;
+    item->no_appended= TRUE;
+    (*offset_limit)--;
+    return 0;
+  }
+  
   for (; arg < arg_end; arg++)
   {
     String *res;
@@ -3149,7 +3162,9 @@ int dump_leaf_key(void* key_arg, element_count count __attribute__((unused)),
     if (res)
       result->append(*res);
   }
-
+  
+  if (item->limit_clause)
+    (*row_limit)--;
   item->row_count++;
 
   /* stop if length of result more than max_length */
@@ -3278,7 +3293,7 @@ Item_func_group_concat::Item_func_group_concat(THD *thd,
   force_copy_fields(item->force_copy_fields),
   row_limit(item->row_limit), offset_limit(item->offset_limit),
   limit_clause(item->limit_clause),copy_offset_limit(item->copy_offset_limit),
-  copy_row_limit(item->copy_row_limit), original(item->original)
+  copy_row_limit(item->copy_row_limit), original(item)
 {
   quick_group= item->quick_group;
   result.set_charset(collation.collation);
