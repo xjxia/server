@@ -309,6 +309,7 @@ dict_stats_exec_sql(
 			trx_start_internal_read_only(trx);
 		} else {
 			trx_start_internal(trx);
+			ut_d(trx->persistent_stats = true);
 		}
 	}
 
@@ -336,6 +337,7 @@ dict_stats_exec_sql(
 	}
 
 	if (trx_started) {
+		ut_d(trx->persistent_stats = false);
 		trx_free_for_background(trx);
 	}
 
@@ -2345,6 +2347,7 @@ dict_stats_save_index_stat(
 
 	ut_ad(rw_lock_own(dict_operation_lock, RW_LOCK_X));
 	ut_ad(mutex_own(&dict_sys->mutex));
+	ut_ad(trx->persistent_stats);
 
 	dict_fs2utf8(index->table->name.m_name, db_utf8, sizeof(db_utf8),
 		     table_utf8, sizeof(table_utf8));
@@ -2499,6 +2502,7 @@ dict_stats_save(
 		trx_start_internal_read_only(trx);
 	} else {
 		trx_start_internal(trx);
+		ut_d(trx->persistent_stats = true);
 	}
 
 	ret = dict_stats_exec_sql(
@@ -2624,6 +2628,7 @@ end:
 	} else {
 		trx_commit_for_mysql(trx);
 	}
+	ut_d(trx->persistent_stats = false);
 	row_mysql_unlock_data_dictionary(trx);
 
 	trx_free_for_background(trx);
