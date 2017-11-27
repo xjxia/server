@@ -1,4 +1,4 @@
-call mtr.add_suppression("InnoDB: Cannot save table statistics for table `test`\\.`t1`: Persistent statistics do not exist");
+call mtr.add_suppression("InnoDB: Cannot save (table|index) statistics for table `test`\\.`t1`.*: Persistent statistics do not exist");
 SET GLOBAL innodb_stats_persistent= ON;
 CREATE TABLE t1 (t TEXT) ENGINE=InnoDB;
 connect  con1,localhost,root,,test;

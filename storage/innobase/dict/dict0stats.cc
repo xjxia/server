@@ -2475,8 +2475,9 @@ dict_stats_save(
 	dict_fs2utf8(table->name.m_name, db_utf8, sizeof(db_utf8),
 		     table_utf8, sizeof(table_utf8));
 
-	rw_lock_x_lock(dict_operation_lock);
-	mutex_enter(&dict_sys->mutex);
+	trx_t*	trx = trx_allocate_for_background();
+
+	row_mysql_lock_data_dictionary(trx);
 
 	/* MySQL's timestamp is 4 byte, so we use
 	pars_info_add_int4_literal() which takes a lint arg, so "now" is
@@ -2493,6 +2494,12 @@ dict_stats_save(
 		table->stat_clustered_index_size);
 	pars_info_add_ull_literal(pinfo, "sum_of_other_index_sizes",
 		table->stat_sum_of_other_index_sizes);
+
+	if (srv_read_only_mode) {
+		trx_start_internal_read_only(trx);
+	} else {
+		trx_start_internal(trx);
+	}
 
 	ret = dict_stats_exec_sql(
 		pinfo,
@@ -2514,32 +2521,15 @@ dict_stats_save(
 		":clustered_index_size,\n"
 		":sum_of_other_index_sizes\n"
 		");\n"
-		"END;", NULL);
+		"END;", trx);
 
-	if (ret != DB_SUCCESS) {
-		ib::error() << "Cannot save table statistics for table "
-			<< table->name << ": " << ut_strerr(ret);
-
-		mutex_exit(&dict_sys->mutex);
-		rw_lock_x_unlock(dict_operation_lock);
-
-		dict_stats_snapshot_free(table);
-
-		return(ret);
-	}
-
-	trx_t*	trx = trx_allocate_for_background();
-
-	if (srv_read_only_mode) {
-		trx_start_internal_read_only(trx);
-	} else {
-		trx_start_internal(trx);
-	}
-
-	dict_index_t*	index;
 	index_map_t	indexes(
 		(ut_strcmp_functor()),
 		index_map_t_allocator(mem_key_dict_stats_index_map_t));
+
+	if (ret != DB_SUCCESS) {
+		goto end;
+	}
 
 	/* Below we do all the modifications in innodb_index_stats in a single
 	transaction for performance reasons. Modifying more than one row in a
@@ -2553,18 +2543,17 @@ dict_stats_save(
 	stat_name). This is why below we sort the indexes by name and then
 	for each index, do the mods ordered by stat_name. */
 
-	for (index = dict_table_get_first_index(table);
+	for (dict_index_t* index = dict_table_get_first_index(table);
 	     index != NULL;
 	     index = dict_table_get_next_index(index)) {
 
 		indexes[index->name] = index;
 	}
 
-	index_map_t::const_iterator	it;
+	for (index_map_t::const_iterator it = indexes.begin();
+	     it != indexes.end(); ++it) {
 
-	for (it = indexes.begin(); it != indexes.end(); ++it) {
-
-		index = it->second;
+		dict_index_t* index = it->second;
 
 		if (only_for_index != NULL && index->id != *only_for_index) {
 			continue;
@@ -2627,13 +2616,17 @@ dict_stats_save(
 		}
 	}
 
-	trx_commit_for_mysql(trx);
-
+	if (ret != DB_SUCCESS) {
 end:
-	trx_free_for_background(trx);
+		ib::error() << "Cannot save table statistics for table "
+			<< table->name << ": " << ut_strerr(ret);
+		trx_rollback_to_savepoint(trx, NULL);
+	} else {
+		trx_commit_for_mysql(trx);
+	}
+	row_mysql_unlock_data_dictionary(trx);
 
-	mutex_exit(&dict_sys->mutex);
-	rw_lock_x_unlock(dict_operation_lock);
+	trx_free_for_background(trx);
 
 	dict_stats_snapshot_free(table);
 
