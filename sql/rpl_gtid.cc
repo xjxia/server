@@ -2211,7 +2211,7 @@ gtid_waiting::wait_for_gtid(THD *thd, rpl_gtid *wait_gtid,
     {
       uint64 wakeup_seq_no;
       queue_element *cur_waiter;
-
+      uint highest_seq_no= 0;
       mysql_mutex_lock(&rpl_global_gtid_slave_state->LOCK_slave_state);
       /*
         The elements in the gtid_slave_state_hash are never re-allocated once
@@ -2231,8 +2231,22 @@ gtid_waiting::wait_for_gtid(THD *thd, rpl_gtid *wait_gtid,
         my_error(ER_OUT_OF_RESOURCES, MYF(0));
         return 1;
       }
-
-      if ((wakeup_seq_no= slave_state_elem->highest_seq_no) >= seq_no)
+      highest_seq_no= slave_state_elem->highest_seq_no;
+      if (opt_bin_log)
+      {
+        uint size= 0;
+        rpl_gtid *gtid_list= NULL;
+        if (!mysql_bin_log.get_most_recent_gtid_list(&gtid_list,
+                   &size))
+        {
+          for (uint i= 0; i < size; i++)
+            if (gtid_list[i].domain_id == domain_id &&
+                 highest_seq_no < gtid_list[i].seq_no)
+              highest_seq_no= gtid_list[i].seq_no;
+          my_free(gtid_list);
+        }
+      }
+      if ((wakeup_seq_no= highest_seq_no) >= seq_no)
       {
         /*
           We do not have to wait. (We will be removed from the wait queue when
