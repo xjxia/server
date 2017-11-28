@@ -43,7 +43,7 @@ SHOW STATUS LIKE 'wsrep_cluster_size';
 --connection node_1
 --eval change master to master_host='127.0.0.1', master_user='root', master_port=$NODE_MYPORT_4, master_use_gtid=current_pos;
 start slave;
---sleep 1
+--source include/wait_for_slave_to_start.inc
 select @@gtid_binlog_state;
 select @@gtid_slave_pos;
 #--query_vertical SHOW SLAVE STATUS;
@@ -51,42 +51,93 @@ select @@gtid_slave_pos;
 --connection node_4
 --eval change master to master_host='127.0.0.1', master_user='root', master_port=$NODE_MYPORT_1, master_use_gtid=current_pos;
 start slave;
---sleep 1
+--source include/wait_for_slave_to_start.inc
 select @@gtid_binlog_state;
 select @@gtid_slave_pos;
 #--query_vertical SHOW SLAVE STATUS;
 
+--echo cluster 1 node 1
 --connection node_1
-create table t1 (cluster int ,node int);
-insert into t1 values (1,1);
+create table t1 (cluster_domain_id int ,node_server_id int, seq_no int);
+insert into t1 values (1, 11, 2);
 select @@gtid_binlog_state;
 
---sleep 1
---sleep 1
+--echo #wait for sync  cluster 1 and 2
+--connection node_1
+--source include/save_master_gtid.inc
 --connection node_4
-insert into t1 values (2,1);
+--source include/sync_with_master_gtid.inc
+
+--echo cluster 2 node 1
+--connection node_4
+insert into t1 values (2, 21, 1);
 select @@gtid_binlog_state;
 select * from t1;
 
+--echo #wait for sync  cluster 1 and 2
+--connection node_1
+--source include/save_master_gtid.inc
+--connection node_4
+--source include/sync_with_master_gtid.inc
+
+
+--echo cluster 1 node 2
 --connection node_2
-insert into t1 values (1,2);
 select @@gtid_binlog_state;
+insert into t1 values (1, 12, 3);
+select @@gtid_binlog_state;
+
+--echo #wait for sync  cluster 1 and 2
+--connection node_1
+--source include/save_master_gtid.inc
+--connection node_4
+--source include/sync_with_master_gtid.inc
+
+--echo cluster 1 node 3
 --connection node_3
 select @@gtid_binlog_state;
-insert into t1 values (1,3);
+insert into t1 values (1, 13, 4);
+select @@gtid_binlog_state;
+
+--echo #wait for sync  cluster 1 and 2
+--connection node_1
+--source include/save_master_gtid.inc
+--connection node_4
+--source include/sync_with_master_gtid.inc
+
+--echo cluster 2 node 2
 --connection node_5
 select @@gtid_binlog_state;
-insert into t1 values (2,2);
+insert into t1 values (2, 22, 2);
+select @@gtid_binlog_state;
+
+--echo #wait for sync  cluster 2 and 1
+--connection node_4
+--source include/save_master_gtid.inc
+--connection node_1
+--source include/sync_with_master_gtid.inc
+
+--echo cluster 2 node 3
 --connection node_6
 select @@gtid_binlog_state;
-insert into t1 values (2,3);
-
---connection node_1
-drop table t1;
+insert into t1 values (2, 23, 3);
 select @@gtid_binlog_state;
+
+--echo #wait for sync  cluster 2 and 1
+--connection node_4
+--source include/save_master_gtid.inc
+--connection node_1
+--source include/sync_with_master_gtid.inc
+
+
+--echo cluster 1 node 1
+--connection node_1
+select @@gtid_binlog_state;
+drop table t1;
 stop slave;
 change master to master_use_gtid=no;
 
+--echo cluster 2 node 1
 --connection node_4
 stop slave;
 change master to master_use_gtid=no;
