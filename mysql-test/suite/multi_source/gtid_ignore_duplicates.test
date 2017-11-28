@@ -233,7 +233,6 @@ START SLAVE;
 
 
 --connection server_2
-set @@session.server_id=34;
 INSERT INTO t1 VALUES (21);
 BEGIN;
 INSERT INTO t1 VALUES (22);
