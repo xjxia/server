@@ -2211,7 +2211,7 @@ gtid_waiting::wait_for_gtid(THD *thd, rpl_gtid *wait_gtid,
     {
       uint64 wakeup_seq_no;
       queue_element *cur_waiter;
-      uint highest_seq_no= 0;
+      uint64 highest_seq_no= 0;
       mysql_mutex_lock(&rpl_global_gtid_slave_state->LOCK_slave_state);
       /*
         The elements in the gtid_slave_state_hash are never re-allocated once
